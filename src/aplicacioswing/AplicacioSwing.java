@@ -17,6 +17,8 @@ import java.awt.event.WindowEvent;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -180,13 +182,15 @@ public class AplicacioSwing {
                     //getUltimID
                     Usuari usuNew = null;
                     try {
-                        usuNew = new Usuari(6, text1.getText(),
+                        usuNew = new Usuari(cp.ultimID() + 1, text1.getText(),
                                 text2.getText(),
                                 text3.getText(),
                                 formato.parse(text4.getText()),
                                 text5.getText(),
-                                text6.getText());
+                                convertirSHA256(text6.getText()));
                     } catch (ParseException ex) {
+                        Logger.getLogger(AplicacioSwing.class.getName()).log(Level.SEVERE, null, ex);
+                    } catch (GestioProjectesException ex) {
                         Logger.getLogger(AplicacioSwing.class.getName()).log(Level.SEVERE, null, ex);
                     }
                     try {
@@ -308,6 +312,26 @@ public class AplicacioSwing {
         }
     }
 
+    
+    public static String convertirSHA256(String password) {
+        MessageDigest md = null;
+        try {
+            md = MessageDigest.getInstance("SHA-256");
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+            return null;
+        }
+
+        byte[] hash = md.digest(password.getBytes());
+        StringBuffer sb = new StringBuffer();
+
+        for (byte b : hash) {
+            sb.append(String.format("%02x", b));
+        }
+
+        return sb.toString();
+    }
+    
     private void netejarTaulaProjectesNoAssignats() {
         if (tProjectesNoAssignats.getRowCount() > 0) {
             for (int i = tProjectesNoAssignats.getRowCount() - 1; i >= 0; i--) {
@@ -317,11 +341,13 @@ public class AplicacioSwing {
     }
 
     private void netejarTaulaUsuaris() {
-        if (tUsuaris.getRowCount() > 0) {
-            for (int i = tUsuaris.getRowCount() - 1; i >= 0; i--) {
-                tUsuaris.removeRow(i);
+        /*if (taulaUsuaris.getRowCount() > 0) {
+            System.out.println(taulaUsuaris.getRowCount());
+            for (int i = 0; i < taulaUsuaris.getRowCount(); i++) {
+                System.out.println(i);
+                taulaUsuaris.remove(i);
             }
-        }
+        }*/
         /*DefaultTableModel dtm = (DefaultTableModel) taulaUsuaris.getModel();
         dtm.setRowCount(0);*/
 
