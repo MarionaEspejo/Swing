@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Properties;
+import java.util.Vector;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.BorderFactory;
@@ -34,6 +35,7 @@ import javax.swing.BoxLayout;
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
 import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -69,7 +71,7 @@ public class AplicacioSwing {
     //Aquesta variable ens indicara quan es vol crear un usuari (1) o quan es vol editar (0)
     int modeCreacio = 0;
 
-    private List<String> columnesTaulaProjectes = new ArrayList();
+    private List<String> headersTProj = new ArrayList();
 
     JPanel panellLlistaUsuaris, panelde, panellBotons, panellLlistaProjectes, panellLlistaUsuarisAmbBotons, panellGestioUsuari, panellBotonsProjs;
     JLabel nom, cognom1, cognom2, dataNaix, login, passwd;
@@ -89,6 +91,8 @@ public class AplicacioSwing {
     private JTable taulaUsuaris;
     private DefaultTableModel tUsuaris;
 
+    JComboBox comboRol;
+    
     JPanel panellProj = new JPanel();
 
     JButton btnAssignarProj = new JButton();
@@ -108,6 +112,11 @@ public class AplicacioSwing {
         text5 = new JTextField();
         text6 = new JTextField();
 
+        String[] petStrings = {"Programador", "Analista", "Client"};
+
+        comboRol = new JComboBox(petStrings);
+        comboRol.setSelectedIndex(1);
+
         cp = interficie;
         tProjectesAssignats = new DefaultTableModel();
 
@@ -117,7 +126,6 @@ public class AplicacioSwing {
                 return false; // fem que no sigui editable
             }
         };
-
         afegirUsuari();
 
         taulaUsuaris.getSelectionModel().addListSelectionListener(new ListSelectionListener() {
@@ -126,14 +134,19 @@ public class AplicacioSwing {
                 if (e.getValueIsAdjusting()) // si hi ha canvi de seleccio en el JTable
                 {
                     modeCreacio = 0;
+                    text1.setEditable(true);
+                    text2.setEditable(true);
+                    text3.setEditable(true);
+                    text4.setEditable(true);
+                    text5.setEditable(true);
+                    text6.setEditable(true);
                     omplirFormulari();
                     filaSeleccionada = taulaUsuaris.getSelectedRow();
                     idUsuari = (int) taulaUsuaris.getValueAt(taulaUsuaris.getSelectedRow(), 0);
-                    netejarTaulaProjectesAssignats();
-                    omplirTaulaProjectesAssignats();
-                    netejarTaulaProjectesNoAssignats();
-                    omplirTaulaProjectesNoAssignats();
-
+                    buidarTProjAss();
+                    refreshTProjAssign();
+                    buidarTProjNoAss();
+                    refreshTProjNoAssign();
                 }
             }
         });
@@ -148,9 +161,6 @@ public class AplicacioSwing {
                     try {
                         taulaUsuaris.removeAll();
                         cp.deleteUsuari(idUsuari);
-
-                        //netejarTaulaProjectesAssignats();
-                        //crearLlistaUsuaris();
                     } catch (GestioProjectesException ex) {
                         Logger.getLogger(AplicacioSwing.class.getName()).log(Level.SEVERE, null, ex);
                     }
@@ -163,6 +173,13 @@ public class AplicacioSwing {
             @Override
             public void actionPerformed(ActionEvent e) {
                 modeCreacio = 1;
+                text1.setEditable(true);
+                text2.setEditable(true);
+                text3.setEditable(true);
+                text4.setEditable(true);
+                text5.setEditable(true);
+                text6.setEditable(true);
+
                 text1.setText("");
                 text2.setText("");
                 text3.setText("");
@@ -178,9 +195,8 @@ public class AplicacioSwing {
             public void actionPerformed(ActionEvent e) {
                 //si aixo es cert, CREAREM un usuari, sino, UPDATAREM el usuari seleccionat
                 if (modeCreacio == 1) {
-                    //recollirem l'usuari
-                    //getUltimID
                     Usuari usuNew = null;
+
                     try {
                         usuNew = new Usuari(cp.ultimID() + 1, text1.getText(),
                                 text2.getText(),
@@ -188,9 +204,7 @@ public class AplicacioSwing {
                                 formato.parse(text4.getText()),
                                 text5.getText(),
                                 convertirSHA256(text6.getText()));
-                    } catch (ParseException ex) {
-                        Logger.getLogger(AplicacioSwing.class.getName()).log(Level.SEVERE, null, ex);
-                    } catch (GestioProjectesException ex) {
+                    } catch (ParseException | GestioProjectesException ex) {
                         Logger.getLogger(AplicacioSwing.class.getName()).log(Level.SEVERE, null, ex);
                     }
                     try {
@@ -207,7 +221,7 @@ public class AplicacioSwing {
                                 text3.getText(),
                                 formatoUpd.parse(text4.getText()),
                                 text5.getText(),
-                                text6.getText());
+                                convertirSHA256(text6.getText()));
                     } catch (ParseException ex) {
                         Logger.getLogger(AplicacioSwing.class.getName()).log(Level.SEVERE, null, ex);
                     }
@@ -217,8 +231,8 @@ public class AplicacioSwing {
                         Logger.getLogger(AplicacioSwing.class.getName()).log(Level.SEVERE, null, ex);
                     }
                 }
-                netejarTaulaUsuaris();
-                omplirTaulaUsuaris();
+                buidarTUsu();
+                refreshTUsu();
             }
         });
 
@@ -231,13 +245,13 @@ public class AplicacioSwing {
                         Usuari usu = cp.getUsuari(idUsuari);
                         int idProjecte = (int) taulaProjectesNoAssignats.getValueAt(taulaProjectesNoAssignats.getSelectedRow(), 0);
                         Projecte proj = cp.getProjecte(idProjecte);
-                        int idRol = 1;
+                        int idRol = comboRol.getSelectedIndex();
                         Rol rol = cp.getRol(idRol);
                         cp.assignarProjecte(usu, proj, rol);
-                        netejarTaulaProjectesAssignats();
-                        omplirTaulaProjectesAssignats();
-                        netejarTaulaProjectesNoAssignats();
-                        omplirTaulaProjectesNoAssignats();
+                        buidarTProjAss();
+                        refreshTProjAssign();
+                        buidarTProjNoAss();
+                        refreshTProjNoAssign();
                     } catch (GestioProjectesException ex) {
                         Logger.getLogger(AplicacioSwing.class.getName()).log(Level.SEVERE, null, ex);
                     }
@@ -256,10 +270,10 @@ public class AplicacioSwing {
                         int idRol = 1;
                         Rol rol = cp.getRolUsu(proj, usu);
                         cp.desassignarProjecte(usu, proj, rol);
-                        netejarTaulaProjectesAssignats();
-                        omplirTaulaProjectesAssignats();
-                        netejarTaulaProjectesNoAssignats();
-                        omplirTaulaProjectesNoAssignats();
+                        buidarTProjAss();
+                        refreshTProjAssign();
+                        buidarTProjNoAss();
+                        refreshTProjNoAssign();
                     } catch (GestioProjectesException ex) {
                         Logger.getLogger(AplicacioSwing.class.getName()).log(Level.SEVERE, null, ex);
                     }
@@ -272,20 +286,6 @@ public class AplicacioSwing {
         f.setResizable(false);
         f.setLocation(10, 10);
         f.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-
-        //TANCAR FINESTRA
-        addWindowListener(new WindowAdapter() {
-            @Override
-            public void windowClosing(WindowEvent e) {
-                super.windowClosing(e);
-                //JOptionPane.showConfirmDialog(null,"Are sure to close!");
-                int resposta = JOptionPane.showConfirmDialog(null, "Segur que vols tancar l'aplicacio?", "Tancar aplicacio", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
-                if (resposta == 0) {
-                    tancarCapaPersistencia();
-                }
-            }
-
-        });
     }
 
     private void omplirFormulari() {
@@ -304,7 +304,7 @@ public class AplicacioSwing {
         }
     }
 
-    private void netejarTaulaProjectesAssignats() {
+    private void buidarTProjAss() {
         if (tProjectesAssignats.getRowCount() > 0) {
             for (int i = tProjectesAssignats.getRowCount() - 1; i >= 0; i--) {
                 tProjectesAssignats.removeRow(i);
@@ -312,7 +312,6 @@ public class AplicacioSwing {
         }
     }
 
-    
     public static String convertirSHA256(String password) {
         MessageDigest md = null;
         try {
@@ -331,8 +330,8 @@ public class AplicacioSwing {
 
         return sb.toString();
     }
-    
-    private void netejarTaulaProjectesNoAssignats() {
+
+    private void buidarTProjNoAss() {
         if (tProjectesNoAssignats.getRowCount() > 0) {
             for (int i = tProjectesNoAssignats.getRowCount() - 1; i >= 0; i--) {
                 tProjectesNoAssignats.removeRow(i);
@@ -340,7 +339,7 @@ public class AplicacioSwing {
         }
     }
 
-    private void netejarTaulaUsuaris() {
+    private void buidarTUsu() {
         /*if (taulaUsuaris.getRowCount() > 0) {
             System.out.println(taulaUsuaris.getRowCount());
             for (int i = 0; i < taulaUsuaris.getRowCount(); i++) {
@@ -348,7 +347,7 @@ public class AplicacioSwing {
                 taulaUsuaris.remove(i);
             }
         }*/
-        /*DefaultTableModel dtm = (DefaultTableModel) taulaUsuaris.getModel();
+ /*DefaultTableModel dtm = (DefaultTableModel) taulaUsuaris.getModel();
         dtm.setRowCount(0);*/
 
     }
@@ -459,6 +458,12 @@ public class AplicacioSwing {
         text4 = new JTextField();
         text5 = new JTextField();
         text6 = new JTextField();
+        text1.setEditable(false);
+        text2.setEditable(false);
+        text3.setEditable(false);
+        text4.setEditable(false);
+        text5.setEditable(false);
+        text6.setEditable(false);
         JPanel panellBotonsUsr = new JPanel();
         botoGuardarCanvis = new JButton();
 
@@ -513,7 +518,6 @@ public class AplicacioSwing {
 
         constraints.gridx = 0; // El área de texto empieza en la columna cero.
         constraints.gridy = 0; // El área de texto empieza en la fila cero
-        //f.getContentPane().add(titolUsr, constraints);
         panellLlistaUsuaris.add(titolUsr, constraints);
 
         taulaProjectesAssignats = new JTable() {
@@ -524,15 +528,15 @@ public class AplicacioSwing {
         };
 
         tProjectesAssignats = new DefaultTableModel();
-        columnesTaulaProjectes.add("Id");
-        columnesTaulaProjectes.add("Nom");
-        columnesTaulaProjectes.add("Descripcio");
+        headersTProj.add("Id");
+        headersTProj.add("Nom");
+        headersTProj.add("Descripcio");
 
-        for (int i = 0; i < columnesTaulaProjectes.size(); i++) {
-            tProjectesAssignats.addColumn(columnesTaulaProjectes.get(i));
+        for (int i = 0; i < headersTProj.size(); i++) {
+            tProjectesAssignats.addColumn(headersTProj.get(i));
         }
 
-        omplirTaulaProjectesAssignats();
+        refreshTProjAssign();
 
         taulaProjectesAssignats.setModel(tProjectesAssignats);
 
@@ -569,26 +573,25 @@ public class AplicacioSwing {
 
         constraints.gridx = 0; // El área de texto empieza en la columna cero.
         constraints.gridy = 0; // El área de texto empieza en la fila cero
-        //f.getContentPane().add(titolUsr, constraints);
         panellLlistaUsuaris.add(titolUsr, constraints);
 
         taulaProjectesNoAssignats = new JTable() {
             @Override
             public boolean isCellEditable(int row, int column) {
-                return false; // fem que no sigui editable
+                return false;
             }
         };
 
         tProjectesNoAssignats = new DefaultTableModel();
-        columnesTaulaProjectes.add("Id");
-        columnesTaulaProjectes.add("Nom");
-        columnesTaulaProjectes.add("Descripcio");
+        headersTProj.add("Id");
+        headersTProj.add("Nom");
+        headersTProj.add("Descripcio");
 
-        for (int i = 0; i < columnesTaulaProjectes.size(); i++) {
-            tProjectesNoAssignats.addColumn(columnesTaulaProjectes.get(i));
+        for (int i = 0; i < headersTProj.size(); i++) {
+            tProjectesNoAssignats.addColumn(headersTProj.get(i));
         }
 
-        omplirTaulaProjectesNoAssignats();
+        refreshTProjNoAssign();
 
         taulaProjectesNoAssignats.setModel(tProjectesNoAssignats);
 
@@ -603,11 +606,12 @@ public class AplicacioSwing {
         panellLlistaUsuaris.setSize(new Dimension(400, 400));
         panellLlistaUsuaris.add(taulaProjectesNoAssignats, constraints);
         panellProj.add(panellLlistaUsuaris, BorderLayout.SOUTH);
+        panellProj.add(comboRol);
         panellCentral.add(panellProj);
 
     }
 
-    private void omplirTaulaProjectesAssignats() {
+    private void refreshTProjAssign() {
         try {
             if (filaSeleccionada > -1 && idUsuari > 0) {
                 List<Projecte> projectes = cp.getLlistaProjectes(cp.getUsuari(idUsuari));
@@ -626,7 +630,7 @@ public class AplicacioSwing {
         }
     }
 
-    private void omplirTaulaProjectesNoAssignats() {
+    private void refreshTProjNoAssign() {
         try {
             if (filaSeleccionada > -1 && idUsuari > 0) {
                 List<Projecte> projectes = cp.getLlistaProjectesNoAssignats(cp.getUsuari(idUsuari));
@@ -645,7 +649,7 @@ public class AplicacioSwing {
         }
     }
 
-    private void omplirTaulaUsuaris() {
+    private void refreshTUsu() {
         Object data[][] = null;
         int i = 0;
         try {
@@ -673,8 +677,7 @@ public class AplicacioSwing {
         try {
             cp.closeCapa();
         } catch (GestioProjectesException ex) {
-            JOptionPane.showMessageDialog(null, "Error en tancar la capa de persistència",
-                    "Error Capa de Persistencia", JOptionPane.ERROR_MESSAGE);
+            infoError(ex);
         }
     }
 

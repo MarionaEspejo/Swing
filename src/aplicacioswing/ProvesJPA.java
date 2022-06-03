@@ -38,11 +38,7 @@ public class ProvesJPA {
 
         crearCapaPersistencia(nomFitxer);
 
-        /*for (Usuari usu: cp.getLlistaUsuaris()) {
-            System.out.println(usu.toString());
-        }*/
-        
-        AplicacioSwing gestio = new AplicacioSwing("Gestió d'usuaris", cp);
+        AplicacioSwing as = new AplicacioSwing("Gestió d'usuaris", cp);
         
     }
 
@@ -52,18 +48,15 @@ public class ProvesJPA {
         try {
             props.load(new FileReader(nomFitxer));
         } catch (FileNotFoundException ex) {
-            JOptionPane.showMessageDialog(null, "No es troba fitxer de propietats " + nomFitxer,
-                    "Error Capa de Persistencia", JOptionPane.ERROR_MESSAGE);
+            infoError(ex);
             return;
         } catch (IOException ex) {
-            JOptionPane.showMessageDialog(null, "Error en carregar fitxer de propietats " + nomFitxer,
-                    "Error Capa de Persistencia", JOptionPane.ERROR_MESSAGE);
+            infoError(ex);
             return;
         }
         String nomCapa = props.getProperty("nomCapa");
         if (nomCapa == null || nomCapa.equals("")) {
-            JOptionPane.showMessageDialog(null, "Fitxer de propietats " + nomFitxer + " no conté propietat nomCapa",
-                    "Error Capa de Persistencia", JOptionPane.ERROR_MESSAGE);
+            System.out.println("Nom capa no trobada");
             return;
         }
         
@@ -71,10 +64,8 @@ public class ProvesJPA {
 
         try {
             cp = SingletonGP.getGestorProjectes(nomCapa);
-
         } catch (Exception ex) {
-            JOptionPane.showMessageDialog(null, "Error en crear capa de persistencia",
-                    "Error Capa de Persistencia", JOptionPane.ERROR_MESSAGE);
+            infoError(ex);
             return;
         }
     }
